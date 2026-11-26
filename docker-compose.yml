@@ -1,0 +1,22 @@
+services:
+  intuneguard-studio:
+    build: .
+    container_name: intuneguard-studio
+    ports:
+      - "127.0.0.1:8095:8095"
+    environment:
+      INTUNEGUARD_MODE: "synthetic"        # Switch to "live" after ARB approval + App Registration
+      INTUNEGUARD_ALLOW_WRITES: "false"    # Strict read-only default
+      INTUNEGUARD_REQUIRE_RFC: "true"      # Mandatory ITIL RFC ticket gate
+      # AZURE_TENANT_ID: ""
+      # AZURE_CLIENT_ID: ""
+      # AZURE_CLIENT_SECRET: ""            # Prefer Managed Identity / Cert in Azure Container Apps
+    volumes:
+      - intuneguard_audit_data:/data
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  intuneguard_audit_data:

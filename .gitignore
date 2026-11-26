@@ -1,0 +1,33 @@
+# Python bytecode & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Local SQLite ITIL audit DB & JSONL logs (never commit operational audit logs)
+data/
+*.db
+*.db-journal
+*.jsonl
+
+# CRITICAL: Never commit real tenant snapshots, GPO backups, or credentials!
+*snapshot*.json
+IntuneGuard_Orphan_Backups/
+*.pfx
+*.pem
+*.key
+*.cer
+.env
+.env.*
+
+# Exported reports & local handoff notes
+IntuneGuard_AsBuilt_Compliance_Report.*
+HANDOFF.md
+
+# OS & editor artifacts
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IntuneGuard Studio — Guided Intune Learning Tracks &amp; Tenant Memory</title>
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Primary Navigation">
+      <div class="brand">
+        <img class="brand-logo" src="/assets/logo.png" alt="IntuneGuard Studio Logo" width="44" height="44">
+        <div>
+          <div class="brand-title">IntuneGuard Studio</div>
+          <div class="brand-sub">Learn • Clean • Govern</div>
+        </div>
+      </div>
+
+      <nav class="nav-list">
+        <button class="nav-item active" data-tab="tracks">
+          <span class="nav-dot"></span>
+          <span>1. Learning Tracks</span>
+        </button>
+        <button class="nav-item" data-tab="connect">
+          <span class="nav-dot"></span>
+          <span>2. Connect &amp; Stack Profile</span>
+        </button>
+        <button class="nav-item" data-tab="memory">
+          <span class="nav-dot"></span>
+          <span id="nav-memory-label">3. Tenant Memory &amp; CAB</span>
+        </button>
+        <button class="nav-item" data-tab="explorer">
+          <span class="nav-dot"></span>
+          <span>4. Deep Explorer &amp; Reports</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="pill-stack">
+          <span id="mode-badge" class="badge badge-info">SYNTHETIC SANDBOX</span>
+          <span class="badge badge-success">M365 E7 NATIVE</span>
+          <span id="chain-badge" class="badge badge-neutral">CHAIN: CHECKING...</span>
+        </div>
+        <div class="sidebar-meta">
+          Pick one pitfall at a time.<br>
+          Context grows with every track.
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <h1 id="page-title">Pick ONE Intune Pitfall to Solve Today</h1>
+          <p id="tenant-subtitle" class="subtitle">Loading tenant context...</p>
+        </div>
+        <div class="topbar-actions">
+          <button id="theme-toggle-btn" class="btn btn-secondary btn-small" title="Switch Light / Dark Mode">☀️ Light Mode</button>
+          <button id="pres-mode-btn" class="btn btn-secondary btn-small" title="Toggle Classic IT Ops vs AI/MCP view">Classic Ops View</button>
+          <button id="reset-sandbox-btn" class="btn btn-secondary btn-small" style="display:none;">Reset Sandbox</button>
+          <a class="btn btn-secondary btn-small" href="/api/report/sharepoint-kb" download title="Export Knowledge Base for SharePoint Agents & Copilot Agent Builder">SharePoint KB</a>
+          <a class="btn btn-secondary btn-small" href="/api/report/markdown" download>Markdown</a>
+          <a class="btn btn-primary btn-small" href="/api/report/html" download>Auditor HTML</a>
+        </div>
+      </header>
+
+      <div id="toast-area" class="toast-area" aria-live="polite"></div>
+
+      <!-- VIEW 1: LEARNING TRACKS (7 TRACKS + FOCUSED 4-STEP WORKSPACE) -->
+      <section id="tab-tracks" class="tab-panel active">
+        <div id="tracks-launcher">
+          <div class="playbook-hero">
+            <div class="playbook-hero-top">
+              <div>
+                <div class="eyebrow">GUIDED INTUNE MASTERY • ONE FOCUSED PROBLEM AT A TIME</div>
+                <h2 class="hero-heading">Clean up your tenant step by step — without breaking kiosks, AVD, or third-party EDR.</h2>
+              </div>
+              <div class="progress-pill">
+                <div id="mastery-pct" class="progress-val">0%</div>
+                <div id="mastery-sub" class="progress-lbl">0 / 7 tracks • 0 memories</div>
+              </div>
+            </div>
+            <div class="progress-track">
+              <div id="mastery-bar" class="progress-fill" style="width:0%"></div>
+            </div>
+          </div>
+
+          <div id="coex-banner" class="coex-banner" style="display:none;"></div>
+
+          <div id="tracks-grid" class="tracks-grid"></div>
+        </div>
+
+        <div id="track-workspace" style="display:none;"></div>
+      </section>
+
+      <!-- VIEW 2: CONNECT YOUR TENANT + ENVIRONMENT STACK PROFILE -->
+      <section id="tab-connect" class="tab-panel">
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Environment Stack &amp; Coexistence Guardrails</h2>
+            <span class="badge badge-warn">AUTO-ADAPTS TRACK 6 &amp; 7 SAFETY RULES</span>
+          </div>
+          <p class="muted-note">
+            Tell IntuneGuard what else runs on your endpoints so it <strong>never</strong> recommends a setting that locks users out (e.g., requiring Defender RTP while a 3rd-party EDR has Defender disabled).
+          </p>
+          <form id="env-profile-form">
+            <div class="env-grid">
+              <div class="field" style="margin:0;">
+                <label for="env-edr">Endpoint AV / EDR Stack</label>
+                <select id="env-edr">
+                  <option value="third_party_disabled">3rd-Party EDR (Defender Disabled / Non-Passive)</option>
+                  <option value="defender">Microsoft Defender for Endpoint (Active)</option>
+                </select>
+              </div>
+              <div class="field" style="margin:0;">
+                <label for="env-dlp">Endpoint DLP / USB Control</label>
+                <select id="env-dlp">
+                  <option value="third_party_dlp">3rd-Party DLP Agent Active</option>
+                  <option value="purview">Microsoft Purview / Intune Native</option>
+                </select>
+              </div>
+              <div class="field" style="margin:0;">
+                <label for="env-sccm">ConfigMgr (SCCM) Co-Management State</label>
+                <select id="env-sccm">
+                  <option value="mixed_active_and_orphaned">Mixed: Active SCCM + Orphaned Dead-Server Clients</option>
+                  <option value="co_managed_active">Active Co-Managed SCCM + 3rd-Party Cloud Patch</option>
+                  <option value="pure_intune">Pure Intune (Zero SCCM Present)</option>
+                </select>
+              </div>
+            </div>
+            <div class="btn-row">
+              <button type="submit" class="btn btn-primary btn-small">Save Stack Profile &amp; Recalculate Guardrails</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="two-col" id="connect-cards"></div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Microsoft 365 E7 ("Frontier Suite") Native Fit</h2>
+            <span class="badge badge-success">ZERO INTUNE SUITE ADD-ON NEEDED</span>
+          </div>
+          <ul id="e7-list" class="check-list"></ul>
+        </div>
+      </section>
+
+      <!-- VIEW 3: TENANT MEMORY, CAB QUEUE & OPTIONAL AI/MCP -->
+      <section id="tab-memory" class="tab-panel">
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-header">
+              <h2>Growing Tenant Context Memory</h2>
+              <span id="memory-count-badge" class="badge badge-info">0 Saved</span>
+            </div>
+            <p class="muted-note">
+              Every track decision, cleanup standard, and documented exception is saved locally so teammates and auditors can backtrack changes anytime.
+            </p>
+            <div id="memory-list" class="stack-list"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <h2>Human-in-the-Loop CAB Approval Queue</h2>
+              <span id="proposal-count-badge" class="badge badge-warn">0 Pending</span>
+            </div>
+            <p class="muted-note">
+              Proposed changes never mutate Intune directly—they queue here for explicit human CAB review and hash-chained execution.
+            </p>
+            <div id="proposals-list" class="stack-list"></div>
+          </div>
+        </div>
+
+        <div id="mcp-panel" class="panel" style="display:none;">
+          <div class="panel-header">
+            <h2>APIM-Governed MCP Server Playground (Enterprise MCP / Foundry / GitHub Copilot)</h2>
+            <span class="badge badge-info">JSON-RPC 2.0 • APIM GATEWAY READY</span>
+          </div>
+          <p class="muted-note">
+            Test the reusable MCP tools exposed over <code>stdio</code> (<code>mcp_server.py</code>) and <code>POST /mcp</code> (OpenAPI spec at <code>/api/openapi.json</code> for Azure APIM AI Gateway). Need Day-1 Copilot grounding without MCP? Export the <strong>SharePoint KB</strong> above for <strong>SharePoint Agents</strong> &amp; <strong>Copilot Agent Builder</strong>.
+          </p>
+          <div class="two-col" style="margin-bottom:0;">
+            <div class="mcp-form">
+              <label for="mcp-tool-select">MCP Tool</label>
+              <select id="mcp-tool-select"></select>
+              <label for="mcp-args-input">Arguments (JSON)</label>
+              <textarea id="mcp-args-input" rows="5"></textarea>
+              <div class="btn-row">
+                <button id="mcp-run-btn" class="btn btn-primary">Execute MCP Tool Call</button>
+                <button id="mcp-propose-sample-btn" class="btn btn-secondary">Load Sample RFC Proposal</button>
+              </div>
+            </div>
+            <div>
+              <pre id="mcp-output" class="code-block tall">Click "Execute MCP Tool Call" to inspect live JSON-RPC 2.0 output.</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 4: DEEP EXPLORER & REPORTS -->
+      <section id="tab-explorer" class="tab-panel">
+        <div class="subtab-bar">
+          <button class="btn btn-primary btn-small subtab-btn active" data-subtab="backtrack">Outage Backtrack Timeline</button>
+          <button class="btn btn-secondary btn-small subtab-btn" data-subtab="policies">Policy Inventory</button>
+          <button class="btn btn-secondary btn-small subtab-btn" data-subtab="remediations">Self-Healing PowerShell Hub</button>
+          <button class="btn btn-secondary btn-small subtab-btn" data-subtab="audit">SHA-256 ITIL Audit Trail</button>
+        </div>
+
+        <div id="subtab-backtrack" class="subtab-panel active">
+          <div class="panel">
+            <div class="panel-header">
+              <h2>Incident / Outage Backtrack Correlator</h2>
+              <span class="badge badge-danger">ROOT-CAUSE &amp; ROLLBACK</span>
+            </div>
+            <p class="muted-note">
+              Something broke on endpoints? Type a symptom (e.g. <code>scanner</code>, <code>firewall</code>, <code>update</code>, <code>uac</code>, <code>bitlocker</code>) to correlate recent unapproved portal edits, ITIL audit events, Tenant Memory decisions, and 1-click rollback candidates.
+            </p>
+            <div class="toolbar">
+              <div class="filter-group grow">
+                <input id="backtrack-query" type="search" placeholder="Enter symptom or subsystem (or leave blank for full timeline)...">
+              </div>
+              <button id="backtrack-run-btn" class="btn btn-primary">Correlate Timeline</button>
+            </div>
+            <div id="backtrack-results"></div>
+          </div>
+        </div>
+
+        <div id="subtab-policies" class="subtab-panel">
+          <div class="panel">
+            <div class="panel-header">
+              <h2>Searchable Tenant Policy Inventory</h2>
+              <span id="policy-count-label" class="badge badge-neutral">418 Policies</span>
+            </div>
+            <div class="toolbar">
+              <div class="filter-group grow">
+                <input id="pol-search" type="search" placeholder="Search policy name, admin UPN, group, conflict reason...">
+              </div>
+              <div class="filter-group">
+                <select id="pol-status">
+                  <option value="all">All Statuses</option>
+                  <option value="conflict">Conflicting</option>
+                  <option value="unapproved_change">Unapproved Change</option>
+                  <option value="duplicate">Duplicate</option>
+                  <option value="orphaned">Orphaned (Unassigned)</option>
+                  <option value="healthy">Healthy</option>
+                </select>
+              </div>
+              <button id="pol-search-btn" class="btn btn-secondary">Filter</button>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Policy Name</th>
+                    <th>Category</th>
+                    <th>Assignments</th>
+                    <th>Modified / Actor</th>
+                    <th>RFC</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="policy-table-body"></tbody>
+              </table>
+            </div>
+            <div class="pager">
+              <button id="pol-prev" class="btn btn-secondary">Previous</button>
+              <span id="pol-page-info" class="muted-note">Page 1</span>
+              <button id="pol-next" class="btn btn-secondary">Next</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="subtab-remediations" class="subtab-panel">
+          <div class="panel">
+            <div class="panel-header">
+              <h2>Self-Healing Proactive Remediations (Included in M365 E7)</h2>
+              <select id="script-control-select" style="max-width:360px;" aria-label="Select control"></select>
+            </div>
+            <p id="script-meta" class="muted-note"></p>
+            <div class="two-col" style="margin-bottom:0;">
+              <div>
+                <div class="code-header">
+                  <strong>Detect.ps1</strong>
+                  <button class="btn btn-small btn-secondary" data-copy="detect-code">Copy Detect.ps1</button>
+                </div>
+                <pre id="detect-code" class="code-block"></pre>
+              </div>
+              <div>
+                <div class="code-header">
+                  <strong>Remediate.ps1</strong>
+                  <button class="btn btn-small btn-secondary" data-copy="remediate-code">Copy Remediate.ps1</button>
+                </div>
+                <pre id="remediate-code" class="code-block"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="subtab-audit" class="subtab-panel">
+          <div class="panel">
+            <div class="panel-header">
+              <h2>Immutable SHA-256 Hash-Chained ITIL Audit Trail</h2>
+              <span id="audit-integrity-label" class="badge badge-success">VERIFIED</span>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Timestamp (UTC)</th>
+                    <th>Event UID</th>
+                    <th>Actor / Channel</th>
+                    <th>Action</th>
+                    <th>Target</th>
+                    <th>RFC</th>
+                    <th>SHA-256 Hash</th>
+                  </tr>
+                </thead>
+                <tbody id="audit-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal: OIB/CIS Dry-Run Diff & Auditor Rationale -->
+  <dialog id="control-dialog" class="modal">
+    <div class="modal-header">
+      <div>
+        <span id="dlg-id" class="badge badge-info"></span>
+        <h2 id="dlg-title"></h2>
+      </div>
+      <button id="dlg-close" class="btn btn-secondary btn-small">Close</button>
+    </div>
+    <div id="dlg-body" class="modal-body"></div>
+  </dialog>
+
+  <!-- Modal: ITIL RFC Gate for Ring Promote / Rollback -->
+  <dialog id="rfc-dialog" class="modal modal-sm">
+    <form id="rfc-form" method="dialog">
+      <div class="modal-header">
+        <h2 id="rfc-dlg-title">ITIL Change Control Gate</h2>
+        <button type="button" id="rfc-cancel" class="btn btn-secondary btn-small">Cancel</button>
+      </div>
+      <div class="modal-body">
+        <p id="rfc-summary" class="muted-note"></p>
+        <input type="hidden" id="rfc-control-id">
+        <input type="hidden" id="rfc-action">
+        <div class="field">
+          <label for="rfc-ticket">ITIL RFC / Change Ticket ID (Required)</label>
+          <input id="rfc-ticket" type="text" required value="CHG-2026-1042">
+        </div>
+        <div class="field">
+          <label for="rfc-actor">Implementing Engineer UPN</label>
+          <input id="rfc-actor" type="text" required value="endpoint-architect@meridianfin.local">
+        </div>
+        <div class="field">
+          <label for="rfc-note">Change Rationale / Soak Notes</label>
+          <textarea id="rfc-note" rows="3" placeholder="Verified zero branch scanner/kiosk/VoIP tickets during soak..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-primary">Execute &amp; Write Audit Hash</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="/app.js" type="module"></script>
+</body>
+</html>
