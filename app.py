@@ -6,6 +6,7 @@ Then open http://127.0.0.1:8095
 """
 from __future__ import annotations
 
+import hmac
 import json
 import mimetypes
 import urllib.parse
@@ -86,7 +87,7 @@ class IntuneGuardRouter:
     def _serve_static(self, rel_path: str) -> tuple[int, dict[str, str], bytes]:
         clean = rel_path.lstrip("/") or "index.html"
         target = (WEB_DIR / clean).resolve()
-        if not str(target).startswith(str(WEB_DIR.resolve())) or not target.is_file():
+        if not target.is_relative_to(WEB_DIR.resolve()) or not target.is_file():
             return self._json_response(HTTPStatus.NOT_FOUND, {"error": "Not found"})
         ctype, _ = mimetypes.guess_type(str(target))
         return self._bytes_response(HTTPStatus.OK, target.read_bytes(), ctype or "application/octet-stream")
@@ -362,7 +363,7 @@ class IntuneGuardRouter:
                     # Enforce APIM AI Gateway shared secret/subscription header when configured
                     if self.config.apim_gateway_key:
                         provided = hdrs.get("x-intuneguard-apim-key") or hdrs.get("ocp-apim-subscription-key") or ""
-                        if provided != self.config.apim_gateway_key:
+                        if not hmac.compare_digest(provided, self.config.apim_gateway_key):
                             return self._json_response(
                                 HTTPStatus.UNAUTHORIZED,
                                 {"error": "Unauthorized: Valid APIM AI Gateway key required for /mcp."},

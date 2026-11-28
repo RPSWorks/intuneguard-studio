@@ -9,11 +9,13 @@ Security Controls for Regulated ARB Review:
 from __future__ import annotations
 
 import json
+import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Any
 
 from backend.config import ALLOWED_LIVE_HOSTS, AppConfig
+from backend.snapshot_normalizer import normalize_graph_payload
 from backend.synthetic_tenant import build_synthetic_tenant
 
 
@@ -87,107 +89,83 @@ class LiveGraphAdapter(TenantAdapter):
             pages += 1
         return items
 
+    def _graph_get_safe(self, path: str, max_pages: int = 10) -> list[dict[str, Any]]:
+        """Best-effort Graph pull for optional scopes (never suppresses EgressPolicyViolation)."""
+        try:
+            return self._graph_get_all(path, max_pages=max_pages)
+        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError):
+            return []
+
     def fetch_tenant_snapshot(self) -> dict[str, Any]:
-        # Real Microsoft Graph endpoints for read-only discovery
-        cfg_policies = self._graph_get_all("/beta/deviceManagement/configurationPolicies?$top=100")
-        dev_configs = self._graph_get_all("/v1.0/deviceManagement/deviceConfigurations?$top=100")
-        compliance = self._graph_get_all("/v1.0/deviceManagement/deviceCompliancePolicies?$top=100")
+        # Real Microsoft Graph endpoints matching Export-IntuneGuardSnapshot.ps1 (Phase 1.5 parity)
+        org_items = self._graph_get_safe("/v1.0/organization?$select=id,displayName", max_pages=1)
+        org = org_items[0] if org_items else {}
+
+        cfg_policies = self._graph_get_all("/beta/deviceManagement/configurationPolicies?$expand=assignments&$top=100")
+        dev_configs = self._graph_get_all("/v1.0/deviceManagement/deviceConfigurations?$expand=assignments&$top=100")
+        compliance = self._graph_get_all("/v1.0/deviceManagement/deviceCompliancePolicies?$expand=assignments&$top=100")
         groups_raw = self._graph_get_all("/v1.0/groups?$select=id,displayName,groupTypes,membershipRule&$top=100")
-        audit_raw = self._graph_get_all("/v1.0/deviceManagement/auditEvents?$top=25")
 
-        policies: list[dict[str, Any]] = []
-        for p in cfg_policies:
-            policies.append(
-                {
-                    "id": p.get("id", ""),
-                    "name": p.get("name", "Unnamed Settings Catalog"),
-                    "category": "Settings Catalog",
-                    "setting_key": "live_settings_catalog",
-                    "configured_value": p.get("technologies", "mdm"),
-                    "assigned_include": [],
-                    "assigned_exclude": [],
-                    "last_modified": (p.get("lastModifiedDateTime") or "")[:10],
-                    "modified_by": "Graph Live",
-                    "rfc_tag": None,
-                    "status_flag": "healthy",
-                    "conflict_reason": "",
-                }
-            )
-        for p in dev_configs:
-            policies.append(
-                {
-                    "id": p.get("id", ""),
-                    "name": p.get("displayName", "Unnamed Device Config"),
-                    "category": p.get("@odata.type", "Device Configuration").split(".")[-1],
-                    "setting_key": "live_device_config",
-                    "configured_value": "Live Graph Policy",
-                    "assigned_include": [],
-                    "assigned_exclude": [],
-                    "last_modified": (p.get("lastModifiedDateTime") or "")[:10],
-                    "modified_by": "Graph Live",
-                    "rfc_tag": None,
-                    "status_flag": "healthy",
-                    "conflict_reason": "",
-                }
-            )
-        for p in compliance:
-            policies.append(
-                {
-                    "id": p.get("id", ""),
-                    "name": p.get("displayName", "Unnamed Compliance Policy"),
-                    "category": "Device Compliance",
-                    "setting_key": "device_compliance_zero_trust_ca",
-                    "configured_value": "Live Compliance Policy",
-                    "assigned_include": [],
-                    "assigned_exclude": [],
-                    "last_modified": (p.get("lastModifiedDateTime") or "")[:10],
-                    "modified_by": "Graph Live",
-                    "rfc_tag": None,
-                    "status_flag": "healthy",
-                    "conflict_reason": "",
-                }
-            )
-
-        groups = [
-            {
-                "id": g.get("id", ""),
-                "name": g.get("displayName", ""),
-                "type": "Dynamic" if "DynamicMembership" in (g.get("groupTypes") or []) else "Assigned",
-                "rule": g.get("membershipRule"),
-                "member_count": 0,
-                "nested_children": [],
-                "risk_flag": None,
-            }
-            for g in groups_raw
+        autopilot_raw = self._graph_get_safe("/beta/deviceManagement/windowsAutopilotDeploymentProfiles?$top=100")
+        enrollment_cfgs = self._graph_get_safe("/beta/deviceManagement/deviceEnrollmentConfigurations?$top=100")
+        esp_raw = [
+            e for e in enrollment_cfgs
+            if "EnrollmentCompletionPage" in str(e.get("@odata.type") or "")
         ]
-
-        unapproved = [
-            {
-                "timestamp_utc": e.get("activityDateTime", ""),
-                "actor": (e.get("actor") or {}).get("userPrincipalName") or "App/System",
-                "policy_name": e.get("displayName", "Intune Change"),
-                "change_summary": e.get("activity", ""),
-                "rfc_ticket": None,
-                "severity": "Medium",
-            }
-            for e in audit_raw
+        roles_raw = [
+            r for r in self._graph_get_safe("/v1.0/deviceManagement/roleDefinitions?$top=100")
+            if not r.get("isBuiltIn")
         ]
+        scope_tags_raw = self._graph_get_safe("/beta/deviceManagement/roleScopeTags?$top=100")
+        devices_raw = self._graph_get_safe(
+            "/v1.0/deviceManagement/managedDevices?"
+            "$filter=operatingSystem%20eq%20'Windows'&"
+            "$select=id,deviceName,osVersion,complianceState,joinType,managementAgent&$top=100"
+        )
+        audit_raw = self._graph_get_safe("/v1.0/deviceManagement/auditEvents?$top=50", max_pages=1)
 
-        return {
-            "tenant": {
-                "name": f"Live Microsoft Entra Tenant ({self.config.tenant_id[:8]}...)",
-                "tenant_id": self.config.tenant_id,
-                "licensing": "Live Tenant (Microsoft Graph API Read-Only)",
-                "industry": "Enterprise Production",
-                "mode": "live",
-                "devices": {"total_managed_windows": 0, "by_segment": {}, "join_state": {}, "os_versions": {}},
-            },
-            "groups": groups,
-            "policies": policies,
-            "tattooed_gpos": [],
-            "unapproved_changes": unapproved,
-            "enterprise_apps": [],
+        win10_count = sum(
+            1 for d in devices_raw if str(d.get("osVersion") or "").startswith("10.0.19")
+        )
+        co_managed_count = sum(
+            1 for d in devices_raw if "configurationmanager" in str(d.get("managementAgent") or "").lower()
+        )
+
+        join_counts: dict[str, int] = {}
+        os_counts: dict[str, int] = {}
+        for d in devices_raw:
+            jt = str(d.get("joinType") or "Unknown")
+            join_counts[jt] = join_counts.get(jt, 0) + 1
+            osv = str(d.get("osVersion") or "")
+            os_label = "Windows 10 (EOL)" if osv.startswith("10.0.19") else ("Windows 11" if osv.startswith("10.0.2") else "Windows Other")
+            os_counts[os_label] = os_counts.get(os_label, 0) + 1
+
+        raw_payload = {
+            "tenant_name": org.get("displayName") or f"Live Microsoft Entra Tenant ({self.config.tenant_id[:8]}...)",
+            "tenant_id": org.get("id") or self.config.tenant_id,
+            "configuration_policies": cfg_policies,
+            "device_configurations": dev_configs,
+            "compliance_policies": compliance,
+            "groups": groups_raw,
+            "autopilot_profiles": autopilot_raw,
+            "esp_profiles": esp_raw,
+            "custom_roles": roles_raw,
+            "scope_tags": scope_tags_raw,
+            "windows_devices_count": len(devices_raw),
+            "windows_10_count": win10_count,
+            "co_managed_count": co_managed_count,
+            "devices_join_state": join_counts,
+            "devices_os_versions": os_counts,
+            "audit_events": audit_raw,
         }
+        return normalize_graph_payload(
+            raw_payload,
+            mode="live",
+            licensing="Live Tenant (Microsoft Graph API Read-Only)",
+            industry="Enterprise Production",
+            modified_by="Graph Live",
+            require_policies=False,
+        )
 
 
 def build_adapter(config: AppConfig) -> TenantAdapter:

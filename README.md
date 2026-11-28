@@ -11,7 +11,7 @@
 
 ---
 
-Instead of dumping 400 policies and every Intune discipline onto one overwhelming screen, **IntuneGuard Studio** breaks endpoint modernization into **6 bite-sized Guided Tracks**—so engineers of any experience level can pick **one** pitfall today, learn *why* it breaks tenants, inspect *only* what's broken for that topic, fix it safely, and save what they learned into a persistent **Tenant Context Memory** shared by both the team and AI/MCP agents.
+Instead of dumping 400 policies and every Intune discipline onto one overwhelming screen, **IntuneGuard Studio** breaks endpoint modernization into **7 bite-sized Guided Tracks**—so engineers of any experience level can pick **one** pitfall today, learn *why* it breaks tenants, inspect *only* what's broken for that topic, fix it safely, and save what they learned into a persistent **Tenant Context Memory** shared by both the team and AI/MCP agents.
 
 Built with **zero third-party runtime dependencies** (pure Python 3.12 stdlib + self-contained HTML/CSS/JS SPA) for regulated financial, healthcare, and enterprise Architecture Review Boards (ARBs). Runs natively on **Microsoft 365 E7 ("Frontier Suite")** with **\$0 add-on spend** (no Intune Suite required).
 
@@ -51,7 +51,7 @@ Every Track follows the same consistent loop: **`1. Learn (30 sec)` → `2. Insp
 - **Zero-Wait Real-Tenant Integration:**
   - **Path A (Day 1 — Zero App Reg, Zero ARB Wait):** Download `Export-IntuneGuardSnapshot.ps1` (read-only interactive Graph login) and upload the JSON straight into the browser.
   - **Path B (Ongoing Live Integration):** Download `New-IntuneGuardAppReg.ps1` (X.509 cert, zero client secrets, strictly 6 `*.Read.All` scopes, code-enforced outbound allowlist to `graph.microsoft.com` / `login.microsoftonline.com`).
-- **AI / MCP That Learns Your Tenant:** Exposes **8 JSON-RPC 2.0 MCP tools** over both `stdio` (`mcp_server.py`) and `POST /mcp`—including `get_tenant_context_memory` (so Copilot / VS Code / local LLMs inherit your team's accumulated tenant context) and `propose_policy_change` (strictly gated behind the Human-in-the-Loop CAB Approval Queue).
+- **AI / MCP That Learns Your Tenant:** Exposes **9 JSON-RPC 2.0 MCP tools** over both `stdio` (`mcp_server.py`) and `POST /mcp`—including `get_tenant_context_memory` (so Copilot / VS Code / local LLMs inherit your team's accumulated tenant context) and `propose_policy_change` (strictly gated behind the Human-in-the-Loop CAB Approval Queue).
 
 ---
 
@@ -73,7 +73,7 @@ python mcp_server.py
 docker compose up --build
 ```
 
-### Run Automated Verification Suite (8 End-to-End Tests)
+### Run Automated Verification Suite (12 End-to-End Tests)
 ```bash
 python -m unittest discover -s tests -v
 ```
@@ -88,7 +88,7 @@ python -m unittest discover -s tests -v
 - [`docs/LICENSING_COMPATIBILITY_E7.md`](docs/LICENSING_COMPATIBILITY_E7.md) — Microsoft 365 E7 ("Frontier Suite") native capability map (zero Intune Suite add-on required)
 - [`docs/LEADERSHIP_ROLLOUT_PLAYBOOK.md`](docs/LEADERSHIP_ROLLOUT_PLAYBOOK.md) — Step-by-step leadership pitch, resilient deployment guide, and plain-English Tenant Memory explanation
 - [`docs/ENTERPRISE_AI_APIM_MCP_FIT.md`](docs/ENTERPRISE_AI_APIM_MCP_FIT.md) — Level 2.5 Azure APIM AI Gateway-governed MCP integration & Day-1 SharePoint Agent Knowledge Base export
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) — Planned evolution: Intune monthly release sync, multi-engineer track ownership, outage backtracking timeline, and full live export expansion
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — Shipped v1.0.x milestones and upcoming v1.1.0 (Deep Graph Parity), v1.2.0 (Offline Drift & Static Demo), and v2.0.0 (Evergreen Catalog & IaC) plans
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — How to add new Guided Learning Tracks, OIB/CIS controls, and Graph parsers
 - [`SECURITY.md`](SECURITY.md) — Architectural security guarantees & responsible vulnerability disclosure
 - [`LICENSE`](LICENSE) — MIT Open-Source License

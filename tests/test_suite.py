@@ -502,6 +502,124 @@ class TestIntuneGuardStudio(unittest.TestCase):
         self.assertEqual(code, 200)
         self.assertEqual(resp_hdrs.get("X-Apim-Correlation-Id"), "corr-998877")
 
+    def test_12_live_graph_parity_and_security_hardening(self) -> None:
+        # Verify LiveGraphAdapter produces full Phase 1.5 parity across all 7 tracks
+        import urllib.error
+        from unittest.mock import patch
+
+        live_cfg = AppConfig(
+            mode="live",
+            tenant_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+            client_id="client-id",
+            client_secret="client-secret",
+        )
+        adapter = LiveGraphAdapter(live_cfg)
+
+        mock_responses = {
+            "/v1.0/organization": [{"id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", "displayName": "Meridian Regional Financial"}],
+            "/beta/deviceManagement/configurationPolicies": [
+                {
+                    "id": "cfg-1",
+                    "name": "BitLocker XTS-256 Standard",
+                    "roleScopeTagIds": ["2"],
+                    "lastModifiedDateTime": "2026-11-10T12:00:00Z",
+                    "assignments": [
+                        {"target": {"@odata.type": "#microsoft.graph.groupAssignmentTarget", "groupId": "grp-1"}},
+                        {"target": {"@odata.type": "#microsoft.graph.exclusionGroupAssignmentTarget", "groupId": "grp-2"}},
+                    ],
+                }
+            ],
+            "/v1.0/deviceManagement/deviceConfigurations": [
+                {
+                    "id": "dev-1",
+                    "displayName": "Orphaned Legacy Firewall",
+                    "@odata.type": "#microsoft.graph.windows10EndpointProtectionConfiguration",
+                    "assignments": [],
+                }
+            ],
+            "/v1.0/deviceManagement/deviceCompliancePolicies": [
+                {
+                    "id": "cmp-1",
+                    "displayName": "Win11 Zero Trust Compliance",
+                    "assignments": [
+                        {"target": {"@odata.type": "#microsoft.graph.allDevicesAssignmentTarget"}},
+                    ],
+                }
+            ],
+            "/v1.0/groups": [
+                {"id": "grp-1", "displayName": "DYN-Win11-Prod", "groupTypes": ["DynamicMembership"]},
+                {"id": "grp-2", "displayName": "SG-Temp-Bypass-Branch", "groupTypes": []},
+            ],
+            "/beta/deviceManagement/windowsAutopilotDeploymentProfiles": [
+                {
+                    "id": "ap-1",
+                    "displayName": "Branch Autopilot Legacy",
+                    "outOfBoxExperienceSettings": {"userType": "administrator"},
+                }
+            ],
+            "/beta/deviceManagement/deviceEnrollmentConfigurations": [
+                {
+                    "id": "esp-1",
+                    "displayName": "Default ESP",
+                    "@odata.type": "#microsoft.graph.windows10EnrollmentCompletionPageConfiguration",
+                    "selectedMobileAppIds": ["a1", "a2", "a3", "a4", "a5", "a6", "a7"],
+                    "installProgressTimeoutInMinutes": 30,
+                }
+            ],
+            "/v1.0/deviceManagement/roleDefinitions": [
+                {
+                    "id": "role-1",
+                    "displayName": "Tier-1 Helpdesk Custom",
+                    "isBuiltIn": False,
+                    "rolePermissions": [
+                        {"resourceActions": [{"allowedResourceActions": ["Microsoft.Intune_ManagedDevices_Wipe"]}]}
+                    ],
+                },
+                {"id": "role-builtin", "displayName": "Read Only Operator", "isBuiltIn": True, "rolePermissions": []},
+            ],
+            "/beta/deviceManagement/roleScopeTags": [{"id": str(i), "displayName": f"Tag-{i}"} for i in range(6)],
+            "/v1.0/deviceManagement/managedDevices": [
+                {"id": "d1", "osVersion": "10.0.19045.4000", "joinType": "hybridAzureADJoined", "managementAgent": "configurationManagerClientMdm"},
+                {"id": "d2", "osVersion": "10.0.22631.4000", "joinType": "azureADJoined", "managementAgent": "mdm"},
+            ],
+            "/v1.0/deviceManagement/auditEvents": [
+                {"activityDateTime": "2026-11-20T09:00:00Z", "displayName": "BitLocker XTS-256 Standard", "activity": "Patch Policy"}
+            ],
+        }
+
+        def fake_graph_get_all(path: str, max_pages: int = 10) -> list[dict]:
+            base = path.split("?", 1)[0]
+            return mock_responses.get(base, [])
+
+        with patch.object(adapter, "_graph_get_all", side_effect=fake_graph_get_all):
+            snap = adapter.fetch_tenant_snapshot()
+
+        self.assertEqual(snap["tenant"]["mode"], "live")
+        self.assertEqual(snap["tenant"]["name"], "Meridian Regional Financial")
+        self.assertEqual(snap["tenant"]["devices"]["total_managed_windows"], 2)
+        self.assertEqual(len(snap["policies"]), 3)
+        by_id = {p["id"]: p for p in snap["policies"]}
+        self.assertEqual(by_id["cfg-1"]["status_flag"], "conflict")
+        self.assertEqual(by_id["cfg-1"]["assigned_include"], ["DYN-Win11-Prod"])
+        self.assertEqual(by_id["cfg-1"]["assigned_exclude"], ["SG-Temp-Bypass-Branch"])
+        self.assertEqual(by_id["dev-1"]["status_flag"], "orphaned")
+        self.assertEqual(len(snap["autopilot_esp"]), 2)
+        self.assertEqual(len(snap["custom_roles"]), 1)
+        self.assertEqual(len(snap["scope_tags"]), 2)
+        self.assertEqual(len(snap["device_personas"]), 2)
+
+        # Verify _graph_get_safe degrades on HTTP 403 but NEVER suppresses EgressPolicyViolation
+        http_403 = urllib.error.HTTPError("https://graph.microsoft.com/v1.0/x", 403, "Forbidden", {}, None)
+        with patch.object(adapter, "_graph_get_all", side_effect=http_403):
+            self.assertEqual(adapter._graph_get_safe("/v1.0/deviceManagement/roleDefinitions"), [])
+        with patch.object(adapter, "_graph_get_all", side_effect=EgressPolicyViolation("blocked")):
+            with self.assertRaises(EgressPolicyViolation):
+                adapter._graph_get_safe("https://evil.example/v1.0/x")
+
+        # Verify static file serving blocks parent/sibling traversal cleanly
+        status, _, _ = self.router.dispatch("GET", "/../backend/config.py")
+        self.assertEqual(status, 404)
+
 
 if __name__ == "__main__":
     unittest.main()

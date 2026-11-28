@@ -1,6 +1,6 @@
 """Skill-Grown Guided Learning Tracks for IntuneGuard Studio.
 
-Breaks Intune modernization into 6 calm, self-contained Tracks so engineers can
+Breaks Intune modernization into 7 calm, self-contained Tracks so engineers can
 tackle ONE pitfall at a time, follow a consistent 4-step loop
 (1. Learn -> 2. Inspect -> 3. Fix Safely -> 4. Save to Tenant Memory),
 and progressively build shared context for both the team and AI/MCP agents.
